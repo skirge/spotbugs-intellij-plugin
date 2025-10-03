@@ -3,13 +3,13 @@
  *
  * This file is part of IntelliJ SpotBugs plugin.
  *
- * IntelliJ SpotBugs plugin is free software: you can redistribute it 
+ * IntelliJ SpotBugs plugin is free software: you can redistribute it
  * and/or modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation, either version 3 of 
+ * as published by the Free Software Foundation, either version 3 of
  * the License, or (at your option) any later version.
  *
  * IntelliJ SpotBugs plugin is distributed in the hope that it will
- * be useful, but WITHOUT ANY WARRANTY; without even the implied 
+ * be useful, but WITHOUT ANY WARRANTY; without even the implied
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * See the GNU General Public License for more details.
  *
@@ -21,25 +21,19 @@ package org.jetbrains.plugins.spotbugs.android;
 
 import com.intellij.facet.Facet;
 import com.intellij.facet.FacetManager;
-import com.intellij.notification.Notification;
-import com.intellij.notification.NotificationDisplayType;
-import com.intellij.notification.NotificationGroup;
-import com.intellij.notification.NotificationType;
+import com.intellij.notification.*;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleManager;
 import com.intellij.openapi.project.Project;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.jetbrains.plugins.spotbugs.core.AbstractSuggestionNotificationListener;
 import org.jetbrains.plugins.spotbugs.core.ModuleSettings;
 import org.jetbrains.plugins.spotbugs.core.ProjectSettings;
 import org.jetbrains.plugins.spotbugs.gui.settings.ModuleConfigurableImpl;
 import org.jetbrains.plugins.spotbugs.gui.settings.ProjectConfigurableImpl;
+import org.jetbrains.plugins.spotbugs.resources.ResourcesLoader;
 
 public final class RFilerFilterSuggestion {
-
-	private static final String NOTIFICATION_GROUP_ID_SUGGESTION = "SpotBugs: R-File Filter Suggestion";
-	private static final NotificationGroup NOTIFICATION_GROUP_PLUGIN_SUGGESTION = new NotificationGroup(NOTIFICATION_GROUP_ID_SUGGESTION, NotificationDisplayType.STICKY_BALLOON, false);
 
 	@NotNull
 	private final Project project;
@@ -71,28 +65,31 @@ public final class RFilerFilterSuggestion {
 	}
 
 	private void showSuggestion(@Nullable final Module module) {
+		NotificationGroupManager.getInstance()
+				.getNotificationGroup("SpotBugs.RFileFilterSuggestion")
+				.createNotification(
+						ResourcesLoader.getString("notification.r.filter.suggestion"),
+						NotificationType.INFORMATION
+				)
+				.addAction(NotificationAction.create(getNotificationActionText(module), (e, notification) -> {
+					if (module != null) {
+						ModuleConfigurableImpl.showFileFilterAndAddRFilerFilter(module);
+					} else {
+						ProjectConfigurableImpl.showFileFilterAndAddRFilerFilter(project);
+					}
+					notification.hideBalloon();
+				}))
+				.setImportant(false)
+				.notify(project);
+	}
+
+	@NotNull
+	private static String getNotificationActionText(@Nullable final Module module) {
 		final StringBuilder sb = new StringBuilder();
-		sb.append("<a href=add>").append("Add R.class File Filter").append("</a>");
+		sb.append("Add R.class File Filter");
 		if (module != null) {
 			sb.append(" for module '").append(module.getName()).append("'");
 		}
-		sb.append("<br><br><a href='").append(AbstractSuggestionNotificationListener.A_HREF_DISABLE_ANCHOR).append("'>Disable Suggestion</a>");
-
-		NOTIFICATION_GROUP_PLUGIN_SUGGESTION.createNotification(
-				"SpotBugs R-Filter Suggestion",
-				sb.toString(),
-				NotificationType.INFORMATION,
-				new AbstractSuggestionNotificationListener(project, NOTIFICATION_GROUP_ID_SUGGESTION) {
-					@Override
-					protected void linkClicked(@NotNull final Notification notification, String description) {
-						if (module != null) {
-							ModuleConfigurableImpl.showFileFilterAndAddRFilerFilter(module);
-						} else {
-							ProjectConfigurableImpl.showFileFilterAndAddRFilerFilter(project);
-						}
-						notification.hideBalloon();
-					}
-				}
-		).setImportant(false).notify(project);
+		return sb.toString();
 	}
 }
